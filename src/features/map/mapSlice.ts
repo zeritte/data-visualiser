@@ -5,7 +5,7 @@ import { fetchMapData } from './mapAPI';
 export interface CounterState {
   data: any;
   status: 'idle' | 'loading' | 'failed';
-  ramps: { [key: string]: number }[];
+  ramps: { name: string; count: number }[];
 }
 
 const initialState: CounterState = {
@@ -37,19 +37,20 @@ export const mapSlice = createSlice({
       .addCase(fetchMapDataAsync.fulfilled, (state, action) => {
         state.status = 'idle';
         state.data = action.payload;
-        state.ramps = action.payload?.features
-          .map((feature: { properties: { material: string } }) => feature.properties.material)
-          .reduce(
-            (acc, curr) => ({
-              count:
-                acc?.filter((name) => name === curr).length > 0
-                  ? ++acc?.filter((name) => name === curr)[0]
-                  : 1,
-              acc
-            }),
-            []
-          );
-        console.log('🚀 ~ file: mapSlice.ts ~ line 43 ~ .addCase ~ state.ramps', state.ramps);
+        const ramps: string[] = action.payload?.features.map(
+          (feature: { properties: { material: string } }) => feature.properties.material
+        );
+        const rampsCount = [];
+        for (let i = 0; i < ramps.length; i++) {
+          const ramp = ramps[i];
+          const index = rampsCount.findIndex((r) => r.name === ramp);
+          if (index > -1) {
+            rampsCount[index].count += 1;
+          } else {
+            rampsCount.push({ name: ramp, count: 1 });
+          }
+        }
+        state.ramps = rampsCount;
       });
   }
 });

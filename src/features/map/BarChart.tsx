@@ -22,7 +22,8 @@ export function BarChart() {
             type: 'string',
             calc: 'stringify'
           }
-        ]
+        ],
+        ...rampData.map((i) => [i.name, i.count, null, null])
       ]}
       options={{
         title: 'Per material',
