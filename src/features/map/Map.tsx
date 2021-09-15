@@ -1,13 +1,23 @@
 import { useEffect } from 'react';
-import L from 'leaflet';
-import { MapContainer, GeoJSON, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, GeoJSON, TileLayer, useMapEvents } from 'react-leaflet';
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
-import { fetchMapDataAsync, selectMapData } from './mapSlice';
+import { fetchMapDataAsync, filterOnZoom, selectMapData } from './mapSlice';
 
 function UnwrappedMap() {
   const mapData = useAppSelector(selectMapData);
   const dispatch = useAppDispatch();
-  const map = useMap();
+  const map = useMapEvents({
+    zoomend: () => {
+      dispatch(
+        filterOnZoom([
+          map.getBounds().getNorth(),
+          map.getBounds().getSouth(),
+          map.getBounds().getEast(),
+          map.getBounds().getWest()
+        ])
+      );
+    }
+  });
 
   useEffect(() => {
     dispatch(fetchMapDataAsync());
@@ -17,14 +27,10 @@ function UnwrappedMap() {
     <>
       {mapData && (
         <GeoJSON
+          key={mapData?.features?.length ?? 'default'}
           data={mapData}
           markersInheritOptions={false}
           style={{ weight: 10 }}
-          eventHandlers={{
-            click: (e) => {
-              console.log('marker clicked', e);
-            }
-          }}
         />
       )}
       <TileLayer
