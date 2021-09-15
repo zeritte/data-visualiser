@@ -2,16 +2,29 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { RootState } from '../../app/store';
 import { fetchMapData } from './mapAPI';
 
+type ValueOf<T> = T[keyof T];
+const Size = {
+  zero_fifty: '0-50',
+  fifty_twohundred: '50-200',
+  twohundred_infinity: '200-more'
+};
+
 export interface CounterState {
   data: any;
   status: 'idle' | 'loading' | 'failed';
-  ramps: { name: string; count: number }[];
+  rampsPerMaterial: { name: string; count: number }[];
+  rampsPerSize: { size: ValueOf<typeof Size>; count: number }[];
 }
 
 const initialState: CounterState = {
   data: null,
   status: 'idle',
-  ramps: []
+  rampsPerMaterial: [],
+  rampsPerSize: [
+    { size: Size.zero_fifty, count: 0 },
+    { size: Size.fifty_twohundred, count: 0 },
+    { size: Size.twohundred_infinity, count: 0 }
+  ]
 };
 
 // The function below is called a thunk and allows us to perform async logic. It
@@ -37,20 +50,34 @@ export const mapSlice = createSlice({
       .addCase(fetchMapDataAsync.fulfilled, (state, action) => {
         state.status = 'idle';
         state.data = action.payload;
-        const ramps: string[] = action.payload?.features.map(
-          (feature: { properties: { material: string } }) => feature.properties.material
-        );
-        const rampsCount = [];
-        for (let i = 0; i < ramps.length; i++) {
-          const ramp = ramps[i];
-          const index = rampsCount.findIndex((r) => r.name === ramp);
-          if (index > -1) {
-            rampsCount[index].count += 1;
+        const rampsPerMaterialCount = [];
+        const rampsPerSize = [
+          { size: Size.zero_fifty, count: 0 },
+          { size: Size.fifty_twohundred, count: 0 },
+          { size: Size.twohundred_infinity, count: 0 }
+        ];
+        for (let i = 0; i < action.payload?.features?.length; i++) {
+          const material = action.payload.features[i].properties.material;
+          const area = action.payload.features[i].properties.area_;
+          const materialIndex = rampsPerMaterialCount.findIndex((r) => r.name === material);
+
+          if (materialIndex > -1) {
+            rampsPerMaterialCount[materialIndex].count += 1;
           } else {
-            rampsCount.push({ name: ramp, count: 1 });
+            rampsPerMaterialCount.push({ name: material, count: 1 });
+          }
+
+          if (area < 50) {
+            rampsPerSize[0].count += 1;
+          } else if (area < 200) {
+            rampsPerSize[1].count += 1;
+          } else {
+            rampsPerSize[2].count += 1;
           }
         }
-        state.ramps = rampsCount;
+
+        state.rampsPerMaterial = rampsPerMaterialCount;
+        state.rampsPerSize = rampsPerSize;
       });
   }
 });
@@ -58,6 +85,7 @@ export const mapSlice = createSlice({
 export const {} = mapSlice.actions;
 
 export const selectMapData = (state: RootState) => state.map.data;
-export const selectRamps = (state: RootState) => state.map.ramps;
+export const selectRampsPerMaterial = (state: RootState) => state.map.rampsPerMaterial;
+export const selectRampsPerSize = (state: RootState) => state.map.rampsPerSize;
 
 export default mapSlice.reducer;
